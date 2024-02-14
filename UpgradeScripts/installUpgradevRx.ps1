@@ -1,10 +1,12 @@
 $filesDir = "C:\Temp\Topia\AgentUpgrade\"
-if (!(test-path $filesDir)) {
-    mkdir $filesDir
-    mkdir "$filesdir\unified"
+if ((test-path "$filesdir\unified")) {
+    remove-item -r -f "$filesdir\unified" 
 }
+mkdir $filesDir
+mkdir "$filesdir\unified"
 Start-Transcript -Path "C:\Program Files\Vicarius\vrxUpgradeScriptLog.txt" -Verbose
 $logFile = "C:\Temp\Topia\AgentUpgrade\upgradelog.log"
+test-path "$filesDir\vRx.exe"
 $date = get-date -Format MM-dd-yyyy_mmhhss
 $date | Out-File -FilePath $logFile 
 $minimumTopiaVersion = [system.version]"5.1.3"
@@ -112,6 +114,8 @@ function installvRx () {
         $tlsver = [Net.ServicePointManager]::SecurityProtocol
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         Invoke-webrequest "https://vicarius-installer.s3.amazonaws.com/UnifiedAgent/vRx.exe" -OutFile "$filesdir\unified\vRx.exe"
+        "Downloaded vrx.exe = $forceUninstall" | out-file -FilePath $logfile -append
+        test-path "$filesdir\unified\vRx.exe" | out-file -FilePath $logfile -append
         $ProgressPreference = $OriginalPref
         [Net.ServicePointManager]::SecurityProtocol = $tlsver
 
