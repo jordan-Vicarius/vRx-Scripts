@@ -79,13 +79,14 @@ get-service -name wuauserv | Select -Property Name,Status,Starttype | Out-File -
 $LauncherLogs = get-content $DriverUpdateLauncherLogs
 $LauncherLogs
 #Save Logs 
-$logsPath = "C:\Program Files\Vicarius\vRxDriverLogs"
-$null = mkdir "$logsPath" -ErrorAction SilentlyContinue
-cp "$DriverUpdateLauncherLogs" "$logsPath\driverUpdateLauncherLogs-$date.txt" -ErrorAction silentlyContinue
-cp "$rootPath\DriverUpdates\DriverUpdates-MSUpdatelogs.txt" "$logsPath\DriverUpdates-MSUpdatelogs-$date.txt" -ErrorAction silentlyContinue
-cp "$rootPath\PendingReboots\PendingRebootlogs.txt" "$logsPath\PendingRebootlogs-$date.txt" -ErrorAction silentlyContinue
+#$logsPath = "C:\Program Files\Vicarius\vRxDriverLogs\$date\"
+#$null = mkdir "C:\Program Files\Vicarius\vRxDriverLogs" -ErrorAction SilentlyContinue
+#$null = mkdir "$logsPath" -ErrorAction SilentlyContinue
+#cp "$DriverUpdateLauncherLogs" "$logsPath\driverUpdateLauncherLogs.txt" -ErrorAction silentlyContinue
+#cp "$rootPath\DriverUpdates\DriverUpdates-MSUpdatelogs.txt" "$logsPath\DriverUpdates-MSUpdatelogs.txt" -ErrorAction silentlyContinue
+#cp "$rootPath\PendingReboots\PendingRebootlogs.txt" "$logsPath\PendingRebootlogs.txt" -ErrorAction silentlyContinue
 #Cleanup 
 rm -Force $DriverUpdateLauncherLogs -ErrorAction SilentlyContinue
 rm -force "$rootPath\DriverUpdates\DriverUpdates-MSUpdatelogs.txt" -ErrorAction SilentlyContinue
 rm -force "$rootPath\PendingReboots\PendingRebootlogs.txt" -ErrorAction SilentlyContinue
-remove-item -Recurse -Force -Path "$rootPath\PendingReboots"
+remove-item -Recurse -Force -Path "$rootPath\PendingReboots" -ErrorAction SilentlyContinue
