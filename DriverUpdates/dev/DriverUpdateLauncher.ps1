@@ -86,8 +86,7 @@ $LauncherLogs
 #cp "$rootPath\DriverUpdates\DriverUpdates-MSUpdatelogs.txt" "$logsPath\DriverUpdates-MSUpdatelogs.txt" -ErrorAction silentlyContinue
 #cp "$rootPath\PendingReboots\PendingRebootlogs.txt" "$logsPath\PendingRebootlogs.txt" -ErrorAction silentlyContinue
 #Cleanup 
-
 rm -Force $DriverUpdateLauncherLogs -ErrorAction SilentlyContinue
 rm -force "$rootPath\DriverUpdates\DriverUpdates-MSUpdatelogs.txt" -ErrorAction SilentlyContinue
 rm -force "$rootPath\PendingReboots\PendingRebootlogs.txt" -ErrorAction SilentlyContinue
-#remove-item -Recurse -Force -Path "$rootPath\PendingReboots" -ErrorAction SilentlyContinue
+remove-item -Recurse -Force -Path "$rootPath\PendingReboots" -ErrorAction SilentlyContinue

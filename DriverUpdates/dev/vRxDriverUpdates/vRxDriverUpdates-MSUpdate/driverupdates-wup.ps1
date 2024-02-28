@@ -97,24 +97,30 @@ process {
     #$Reboot | Out-File -FilePath $logFile -Append
     #$reboot.required = "True"
     if ($Reboot) {
-        & "$rootPath\DriverUpdates\checkPendingRestart.ps1"
-        $i = 0
-        do {
-            start-sleep -s 60 
-            Write-host "Prompting for Restart "
-            $jobstatus = get-job -name "Check Pending Reboot"
-
-            if ($jobstatus.State -eq "Completed") {
-                $date + $DriverupdateLogs +"Prompted user for Reboot"  | Out-File -FilePath $logFile -Append
-                $i = 4
-            }
-            else {
-                $date + $DriverupdateLogs +"Checking for reboot flag"  | Out-File -FilePath $logFile -Append
-                start-sleep -s 30
-                $i += 1
-
-            }
-        }while ( $i -lt 4)
+        $rebootEnabled = $false
+        if ($rebootEnabled -eq "True") {
+            & "$rootPath\DriverUpdates\checkPendingRestart.ps1"
+            $i = 0
+            do {
+                start-sleep -s 60 
+                Write-host "Prompting for Restart "
+                $jobstatus = get-job -name "Check Pending Reboot"
+    
+                if ($jobstatus.State -eq "Completed") {
+                    $date + $DriverupdateLogs +"Prompted user for Reboot"  | Out-File -FilePath $logFile -Append
+                    $i = 4
+                }
+                else {
+                    $date + $DriverupdateLogs +"Checking for reboot flag"  | Out-File -FilePath $logFile -Append
+                    start-sleep -s 30
+                    $i += 1
+    
+                }
+            }while ( $i -lt 4)
+        }
+        else {
+            $date + $DriverupdateLogs + "Reboot is disabled, Please use substatus in vRx dashboard"| Out-File -FilePath $logFile -Append
+        }
     }
 }
 # End of the script
