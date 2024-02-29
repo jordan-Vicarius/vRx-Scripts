@@ -42,9 +42,8 @@ function CleanupvRx () {
     get-service -name Topia | Stop-Service -ErrorAction SilentlyContinue
     remove-item -force 'C:\Program Files\Vicarius\topia\topiad.exe' -ErrorAction SilentlyContinue
     try {
-
         $app = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" | Select-Object DisplayName,Publisher,DisplayVersion,UninstallString | Where-object {$_.DisplayName -like "*Topia*"}
-        $app1 = Get-ItemProperty "HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*" | Select-Object DisplayName,Publisher,DisplayVersion,UninstallString | Where-object {$_.DisplayName -like "*Topia*"}
+        $app1 = Get-ItemProperty "HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*" | Select-Object DisplayName,Publisher,DisplayVersion,UninstallString,PSPath | Where-object {$_.DisplayName -like "*Topia*"}
         if ($app) {
             $app = Get-WmiObject -Class Win32_Product -Filter "Name = 'Topia'"
             $null = $app.Uninstall()
