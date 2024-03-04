@@ -9,7 +9,7 @@ $logFile = "C:\Temp\Topia\AgentUpgrade\upgradelog.log"
 test-path "$filesDir\vRx.exe"
 $date = get-date -Format MM-dd-yyyy_mmhhss
 $date | Out-File -FilePath $logFile 
-$minimumTopiaVersion = [system.version]"5.1.3"
+$minimumTopiaVersion = [system.version]"5.1.5"
 #insallation Command Variables 
 $secretKey = ""
 $dashboard = ""
@@ -410,5 +410,6 @@ $appv5 = Get-ItemProperty "HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentV
 $appsReg += $appv4
 $appsReg += $appv5
 $appsReg | export-csv "C:\Program Files\Vicarius\vRxUpgradeScript.csv" 
+$appsReg
 $ProgressPreference = $OriginalPref
 Stop-Transcript
