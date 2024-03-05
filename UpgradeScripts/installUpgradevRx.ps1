@@ -16,7 +16,8 @@ $dashboard = ""
 $hostname = "https://$dashboard-api-gateway.vicarius.cloud"
 $endpointTag = "" #Key:Value,Key1:value1
 $proxy = "" #FQDN/IP:port
-$forceUninstall = $false
+$forceUninstall = $false #Force Uninstallation and Reinstallation of vRx agent
+$reinstallNotRegistered = $true  # IF a valid agent registraty cannot be determine, reinstall the agent
 
  # Enter your Powershell installation command
  function checkTopiaInstalled () {
@@ -393,15 +394,32 @@ else {
     write-host "vRx Version: " $isTopiaInstalled.DisplayVersion 
     "vRx Failed to register at $lastConErrDate" | Out-File -FilePath $logFile -Append 
     "vRx Is installed "+ $isTopiaInstalled.DisplayVersion | out-file -FilePath $logfile -append
-    CleanupvRx
-    $argsList = New-Object PScustomObject
-    if ($endpointTag) {
-        $argsList | Add-Member -MemberType NoteProperty -Name "EndpointTag" -Value $endpointTag
+    start-sleep -s 60
+    $TopiaConn,$lastRegDate,$lastConErrDate = checkvRxConnection
+    if (($TopiaConn -eq "Registered") -or ($topiaConn -eq "NoErrors")){
+        Write-host "vRx Registred at $lastRegDate"
+        write-host "vRx Version: " $vRxInstall.DisplayVersion 
+        "vRx Registred at $lastRegDate"  | Out-File -FilePath $logFile -Append 
+        "vRx Is installed "+ $isTopiaInstalled.DisplayVersion | out-file -FilePath $logfile -append
     }
-    if ($proxy) {
-        $argsList | Add-Member -MemberType NoteProperty -Name "Proxy" -Value $Proxy
+    else {
+        Write-host "vRx Failed to register at $lastConErrDate"
+        write-host "vRx Version: " $isTopiaInstalled.DisplayVersion 
+        "vRx Failed to register at $lastConErrDate" | Out-File -FilePath $logFile -Append 
+        "vRx Is installed "+ $isTopiaInstalled.DisplayVersion | out-file -FilePath $logfile -append
+        if ($reinstallNotRegistered) {
+            CleanupvRxf
+            $argsList = New-Object PScustomObject
+            if ($endpointTag) {
+                $argsList | Add-Member -MemberType NoteProperty -Name "EndpointTag" -Value $endpointTag
+            }
+            if ($proxy) {
+                $argsList | Add-Member -MemberType NoteProperty -Name "Proxy" -Value $Proxy
+            }
+            installvRx -secretKey $secretKey -hostname $hostname -argslist $argsList -logFile $logFile -filesdir $filesDir
+        }
     }
-    installvRx -secretKey $secretKey -hostname $hostname -argslist $argsList -logFile $logFile -filesdir $filesDir
+
 }
 $appsReg = @()
 $appv4 = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" | Select-Object DisplayName,Publisher,DisplayVersion,UninstallString,PSPath,PSParentPath | Where-object {$_.DisplayName -like "*Topia*"}
