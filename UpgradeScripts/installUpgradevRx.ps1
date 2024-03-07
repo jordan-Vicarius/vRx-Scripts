@@ -9,6 +9,7 @@ $logFile = "C:\Temp\Topia\AgentUpgrade\upgradelog.log"
 test-path "$filesDir\vRx.exe"
 $date = get-date -Format MM-dd-yyyy_mmhhss
 $date | Out-File -FilePath $logFile 
+
 $minimumTopiaVersion = [system.version]"5.1.5"
 #insallation Command Variables 
 $secretKey = ""
@@ -19,6 +20,8 @@ $proxy = "" #FQDN/IP:port
 $forceUninstall = $false #Force Uninstallation and Reinstallation of vRx agent
 $reinstallNotRegistered = $true  # IF a valid agent registraty cannot be determine, reinstall the agent
 
+#OS Architecture 
+$osarch = [Environment]::Is64BitOperatingSystem
  # Enter your Powershell installation command
  function checkTopiaInstalled () {
     $rtnObj = New-Object -TypeName PScustomObject
@@ -303,6 +306,7 @@ function setconfigVars ($installedVersion) {
     }
 
 }
+if ($osarch) {
 #Check if Topia is installed - Version Check
 $vRxInstall = checkTopiaInstalled
 $installedVersion = [system.version]$vRxInstall.DisplayVersion
@@ -430,4 +434,8 @@ $appsReg += $appv5
 $appsReg | export-csv "C:\Program Files\Vicarius\vRxUpgradeScript.csv" 
 $appsReg
 $ProgressPreference = $OriginalPref
+} 
+else {
+    Write-host "OS is 32bit, Agent cannot be upgraded"
+}
 Stop-Transcript
