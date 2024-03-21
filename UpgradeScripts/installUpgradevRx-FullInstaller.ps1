@@ -1,9 +1,12 @@
 $filesDir = "C:\Temp\Topia\AgentUpgrade\"
+if ((test-path "$filesdir\unified")) {
+    remove-item -r -f "$filesdir\unified" 
+}
 mkdir $filesDir
 mkdir "$filesdir\unified"
 Start-Transcript -Path "C:\Program Files\Vicarius\vrxUpgradeScriptLog.txt" -Verbose
 $logFile = "C:\Temp\Topia\AgentUpgrade\upgradelog.log"
-test-path "$filesDir\vRx.exe"
+test-path "$filesDir\Topia_CMD_Setup_x64.exe"
 $date = get-date -Format MM-dd-yyyy_mmhhss
 $date | Out-File -FilePath $logFile 
 
@@ -15,9 +18,7 @@ $hostname = "https://$dashboard-api-gateway.vicarius.cloud"
 $endpointTag = "" #Key:Value,Key1:value1
 $proxy = "" #FQDN/IP:port
 $forceUninstall = $false #Force Uninstallation and Reinstallation of vRx agent
-$reinstallNotRegistered = $true  # IF a valid agent registration cannot be determine, reinstall the agent
-$vrxEXECheck = $false # Check if vRx.exe exists before uninstalling vRx - This option does not allow for vrx.exe to be downloaded in this script. This can be used in conjunction with upgradeprep script. 
-
+$reinstallNotRegistered = $true  # IF a valid agent registraty cannot be determine, reinstall the agent
 
 #OS Architecture 
 $osarch = [Environment]::Is64BitOperatingSystem
@@ -110,20 +111,20 @@ function installvRx () {
         $argsList
     )
     "Installing vRx agent" | out-file $logFile -Append
-    if (!(test-path "$filesdir\unified\vRx.exe")) {
+    if (!(test-path "$filesdir\unified\Topia_CMD_Setup_x64.exe")) {
         $OriginalPref = $ProgressPreference # Default is 'Continue'
         $ProgressPreference = "SilentlyContinue"
         $tlsver = [Net.ServicePointManager]::SecurityProtocol
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        Invoke-webrequest "https://vicarius-installer.s3.amazonaws.com/UnifiedAgent/vRx.exe" -OutFile "$filesdir\unified\vRx.exe"
-        "Downloaded vrx.exe = $forceUninstall" | out-file -FilePath $logfile -append
-        test-path "$filesdir\unified\vRx.exe" | out-file -FilePath $logfile -append
+        Invoke-webrequest "https://vicarius-release.s3.amazonaws.com/unified-agent/Topia_CMD_Setup_x64.exe" -OutFile "$filesdir\unified\Topia_CMD_Setup_x64.exe"
+        "Downloaded vrx full installer" | out-file -FilePath $logfile -append
+        test-path "$filesdir\unified\Topia_CMD_Setup_x64.exe" | out-file -FilePath $logfile -append
         $ProgressPreference = $OriginalPref
         [Net.ServicePointManager]::SecurityProtocol = $tlsver
 
     }
     "Creating Installation Command based on Arguments" | Out-File -FilePath $logFile -Append
-    $insString = "C:\temp\Topia\AgentUpgrade\Unified\vRx.exe /SecretKey=$secretKey /Hostname=$hostname /AgentType=LocalAgent"
+    $insString = "C:\temp\Topia\AgentUpgrade\Unified\Topia_CMD_Setup_x64.exe /S /SecretKey=$secretKey /Hostname=$hostname /AgentType=LocalAgent"
     if ($argsList.endpointTag){
         $insString += " /EndpointTag=" + $argsList.endpointTag
     }
@@ -131,38 +132,9 @@ function installvRx () {
         $insString += " /ProxyAddress=" + $argsList.proxy
     }
     "Executing Installation Command" | Out-File -FilePath $logFile -Append
-    "InstallationString: $insstring" | Out-File $logFile -Append
     powershell.exe -executionpolicy bypass -command $insString
+    "InstallationString: $insstring" | Out-File $logFile -Append
     
-    
-}
-function downloadvRx () {
-    if (!(test-path "$filesdir\unified\vRx.exe")) {
-        mkdir  "$filesdir\unified" -ErrorAction SilentlyContinue
-        $OriginalPref = $ProgressPreference # Default is 'Continue'
-        $ProgressPreference = "SilentlyContinue"
-        $tlsver = [Net.ServicePointManager]::SecurityProtocol
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        Invoke-webrequest "https://vicarius-installer.s3.amazonaws.com/UnifiedAgent/vRx.exe" -OutFile "$filesdir\unified\vRx.exe"
-        "Downloaded vrx.exe = $forceUninstall" | out-file -FilePath $logfile -append
-        test-path "$filesdir\unified\vRx.exe" | out-file -FilePath $logfile -append
-        $ProgressPreference = $OriginalPref
-        [Net.ServicePointManager]::SecurityProtocol = $tlsver
-        $vrxexeDownloaded = test-path "$filesdir\unified\vRx.exe"
-    }
-    else {
-        $vrxexeDownloaded = test-path "$filesdir\unified\vRx.exe"
-    }
-    return $vrxexeDownloaded
-}
-function checkexeExists () {
-    if (test-path "$filesdir\unified\vRx.exe") {
-        return $true
-    }
-    else {
-        return $false
-    }
-
 }
 function checkvRxConnection() {
     function Check70() {
@@ -335,108 +307,98 @@ function setconfigVars ($installedVersion) {
 
 }
 if ((Get-WmiObject win32_operatingsystem | select osarchitecture).osarchitecture -eq "64-bit") {
-    if ($vrxEXECheck -eq $true) {
-       $vrxExists = checkexeExists
+#Check if Topia is installed - Version Check
+$vRxInstall = checkTopiaInstalled
+$installedVersion = [system.version]$vRxInstall.DisplayVersion
+#Uninstall Topia
+if (($installedVersion -lt $minimumTopiaVersion) -or $forceUninstall) {
+    Write-host "vRx is not installed at version $minimumTopiaVersion or ForceUninstall = True"
+    write-host "vRx Version: " $vRxInstall.DisplayVersion 
+    Write-host "ForceUninstall = $forceUninstall"
+    Write-host "Collected Asset Host Variables"
+    "vRx is not installed at version $minimumTopiaVersion or ForceUninstall = True" | Out-File -FilePath $logFile -Append 
+    "vRx Version: " + $vRxInstall.DisplayVersion | out-file -FilePath $logfile -append
+    "ForceUninstall = $forceUninstall" | out-file -FilePath $logfile -append
+    "Cleaning Installation" | Out-File -FilePath $logFile -Append 
+    "Collected Asset Host Variables" | Out-File -FilePath $logFile -Append 
+    $SKey,$hname,$etag = setconfigVars $installedVersion
+    $SKey | Out-File "$filesDir\secretkey.txt"
+    $hname | Out-File "$filesDir\hname.txt"
+    $etag | Out-File "$filesDir\etag.txt"
+    if ($etag.Length -gt 1){
+        $configSet = $true
     }
-    else {
-        $vrxExists = $true
-    } 
-    if ($vrxExists -eq $true) {  
-    #Check if Topia is installed - Version Check
-    $vRxInstall = checkTopiaInstalled
-    $installedVersion = [system.version]$vRxInstall.DisplayVersion
-    #Uninstall Topia
-    if (($installedVersion -lt $minimumTopiaVersion) -or $forceUninstall) {
-        write-host "Attempting to download vrx.exe"
-        $vrxexeDownloaded = downloadvRx
-        if ($vrxexeDownloaded -eq $true) {
-            Write-host "vRx is not installed at version $minimumTopiaVersion or ForceUninstall = True"
-            write-host "vRx Version: " $vRxInstall.DisplayVersion 
-            Write-host "ForceUninstall = $forceUninstall"
-            Write-host "Collected Asset Host Variables"
-            "vRx is not installed at version $minimumTopiaVersion or ForceUninstall = True" | Out-File -FilePath $logFile -Append 
-            "vRx Version: " + $vRxInstall.DisplayVersion | out-file -FilePath $logfile -append
-            "ForceUninstall = $forceUninstall" | out-file -FilePath $logfile -append
-            "Cleaning Installation" | Out-File -FilePath $logFile -Append 
-            "Collected Asset Host Variables" | Out-File -FilePath $logFile -Append 
-            $SKey,$hname,$etag = setconfigVars $installedVersion
-            $SKey | Out-File "$filesDir\secretkey.txt"
-            $hname | Out-File "$filesDir\hname.txt"
-            $etag | Out-File "$filesDir\etag.txt"
-            if ($etag.Length -gt 1){
-                $configSet = $true
-            }
-            CleanupvRx
-            $topiaSVCStatus = $false
+    CleanupvRx
+    $topiaSVCStatus = $false
+}
+else {
+    Write-host "vRx Is installed "
+    write-host "vRx Version: " $installedVersion
+    "vRx Version: " + $installedVersion | Out-File -FilePath $logFile -Append 
+    "vRx Is installed "+ $installedVersionon | out-file -FilePath $logfile -append
+}
+#Confirm Topia is uninstalled - Version Check
+$vRxInstall = checkTopiaInstalled
+#Install Unified
+if (!($vRxInstall.Topia)) {
+    write-host "installing Topia"
+    "Installing Topia" | Out-File -FilePath $logFile -Append
+    if ($secretKey.length -lt 1) {
+        if ($Skey.length -gt 1) {
+            $secretKey = $SKey
         }
-        else { 
-            Write-host "vRx.exe does not exist and could not be downloaded."
-            write-host "Exiting Script due to vRx.exe not existing"
-            "vRx.exe does not exist and could not be downloaded." | Out-File -FilePath $logFile -Append
-            "Exiting Script due to vRx.exe not existing" | Out-File -FilePath $logFile -Append
-            Write-host "vRx.exe is required before running the script. Please run the upgradeprep.ps1 script to download the vRx.exe"
-            exit (1)
+        else {
+            $secretKey = get-content "$filesDir\secretkey.txt"
         }
-
     }
-    else {
-        Write-host "vRx Is installed "
-        write-host "vRx Version: " $installedVersion
-        "vRx Version: " + $installedVersion | Out-File -FilePath $logFile -Append 
-        "vRx Is installed "+ $installedVersionon | out-file -FilePath $logfile -append
+    if ($dashboard.length -lt 1) {
+        if ($hname.length -gt 1) {
+            $hostname = $hname
+        }
+        else {
+            $hostname = get-content "$filesDir\hname.txt"
+        }
     }
-    #Confirm Topia is uninstalled - Version Check
-    $vRxInstall = checkTopiaInstalled
-    #Install Unified
-    if (!($vRxInstall.Topia)) {
-        write-host "installing Topia"
-        "Installing Topia" | Out-File -FilePath $logFile -Append
-        if ($secretKey.length -lt 1) {
-            if ($Skey.length -gt 1) {
-                $secretKey = $SKey
-            }
-            else {
-                $skePath = $filesDir + "secretkey.txt"
-                $secretKey = get-content $skePath
-            }
-        }
-        if ($dashboard.length -lt 1) {
-            if ($hname.length -gt 1) {
-                $hostname = $hname
-            }
-            else {
-                $hpath = $filesDir + "hname.txt"
-                $hostname = get-content $hpath
-            }
-        }
-        if ($endpointTag.length -lt 1) {
+    if ($endpointTag.length -lt 1) {
+        $endpointTag = $etag
+        if ($etag.length -gt 1) {
             $endpointTag = $etag
-            if ($etag.length -gt 1) {
-                $endpointTag = $etag
-            }
-            else {
-                $tagPath = $filesDir + "etag.txt"
-                $endpointTag = get-content $tagPath
-            }
         }
-        $argsList = New-Object PScustomObject
-        if ($endpointTag) {
-            $argsList | Add-Member -MemberType NoteProperty -Name "EndpointTag" -Value $endpointTag
+        else {
+            $endpointTag = get-content "$filesDir\etag.txt"
         }
-        if ($proxy) {
-            $argsList | Add-Member -MemberType NoteProperty -Name "Proxy" -Value $Proxy
-        }
-        installvRx -secretKey $secretKey -hostname $hostname -argslist $argsList -logFile $logFile -filesdir $filesDir
-
-        $checkTopiaInstalled = checkTopiaInstalled
-        "Topia Installed Object: " + $checkTopiaInstalled | Out-File -FilePath $logFile -Append
     }
-    else {
-        "vRx is already installed"  | out-file -FilePath $logFile
-
+    $argsList = New-Object PScustomObject
+    if ($endpointTag) {
+        $argsList | Add-Member -MemberType NoteProperty -Name "EndpointTag" -Value $endpointTag
     }
-    # confrim Unified is installed
-    start-sleep -s 10
+    if ($proxy) {
+        $argsList | Add-Member -MemberType NoteProperty -Name "Proxy" -Value $Proxy
+    }
+    installvRx -secretKey $secretKey -hostname $hostname -argslist $argsList -logFile $logFile -filesdir $filesDir
+
+    $checkTopiaInstalled = checkTopiaInstalled
+    "Topia Installed Object: " + $checkTopiaInstalled | Out-File -FilePath $logFile -Append
+}
+else {
+    "vRx is already installed"  | out-file -FilePath $logFile
+
+}
+# confrim Unified is installed
+start-sleep -s 10
+$TopiaConn,$lastRegDate,$lastConErrDate = checkvRxConnection
+if (($TopiaConn -eq "Registered") -or ($topiaConn -eq "NoErrors")){
+    Write-host "vRx Registred at $lastRegDate"
+    write-host "vRx Version: " $vRxInstall.DisplayVersion 
+    "vRx Registred at $lastRegDate"  | Out-File -FilePath $logFile -Append 
+    "vRx Is installed "+ $isTopiaInstalled.DisplayVersion | out-file -FilePath $logfile -append
+}
+else {
+    Write-host "vRx Failed to register at $lastConErrDate"
+    write-host "vRx Version: " $isTopiaInstalled.DisplayVersion 
+    "vRx Failed to register at $lastConErrDate" | Out-File -FilePath $logFile -Append 
+    "vRx Is installed "+ $isTopiaInstalled.DisplayVersion | out-file -FilePath $logfile -append
+    start-sleep -s 60
     $TopiaConn,$lastRegDate,$lastConErrDate = checkvRxConnection
     if (($TopiaConn -eq "Registered") -or ($topiaConn -eq "NoErrors")){
         Write-host "vRx Registred at $lastRegDate"
@@ -445,56 +407,33 @@ if ((Get-WmiObject win32_operatingsystem | select osarchitecture).osarchitecture
         "vRx Is installed "+ $isTopiaInstalled.DisplayVersion | out-file -FilePath $logfile -append
     }
     else {
-        write-host "Check 1"
         Write-host "vRx Failed to register at $lastConErrDate"
         write-host "vRx Version: " $isTopiaInstalled.DisplayVersion 
         "vRx Failed to register at $lastConErrDate" | Out-File -FilePath $logFile -Append 
-        "Check 1" | Out-File -FilePath $logFile -Append 
         "vRx Is installed "+ $isTopiaInstalled.DisplayVersion | out-file -FilePath $logfile -append
-        start-sleep -s 60
-        $TopiaConn,$lastRegDate,$lastConErrDate = checkvRxConnection
-        if (($TopiaConn -eq "Registered") -or ($topiaConn -eq "NoErrors")){
-            write-host "Check 2"
-            Write-host "vRx Registred at $lastRegDate"
-            write-host "vRx Version: " $vRxInstall.DisplayVersion 
-            "Check 2" | Out-File -FilePath $logFile -Append 
-            "vRx Registred at $lastRegDate"  | Out-File -FilePath $logFile -Append 
-            "vRx Is installed "+ $isTopiaInstalled.DisplayVersion | out-file -FilePath $logfile -append
-        }
-        else {
-            Write-host "vRx Failed to register at $lastConErrDate"
-            write-host "vRx Version: " $isTopiaInstalled.DisplayVersion 
-            "vRx Failed to register at $lastConErrDate" | Out-File -FilePath $logFile -Append 
-            "vRx Is installed "+ $isTopiaInstalled.DisplayVersion | out-file -FilePath $logfile -append
-            if ($reinstallNotRegistered) {
-                CleanupvRxf
-                $argsList = New-Object PScustomObject
-                if ($endpointTag) {
-                    $argsList | Add-Member -MemberType NoteProperty -Name "EndpointTag" -Value $endpointTag
-                }
-                if ($proxy) {
-                    $argsList | Add-Member -MemberType NoteProperty -Name "Proxy" -Value $Proxy
-                }
-                installvRx -secretKey $secretKey -hostname $hostname -argslist $argsList -logFile $logFile -filesdir $filesDir
+        if ($reinstallNotRegistered) {
+            CleanupvRxf
+            $argsList = New-Object PScustomObject
+            if ($endpointTag) {
+                $argsList | Add-Member -MemberType NoteProperty -Name "EndpointTag" -Value $endpointTag
             }
+            if ($proxy) {
+                $argsList | Add-Member -MemberType NoteProperty -Name "Proxy" -Value $Proxy
+            }
+            installvRx -secretKey $secretKey -hostname $hostname -argslist $argsList -logFile $logFile -filesdir $filesDir
         }
+    }
 
-    }
-    $appsReg = @()
-    $appv4 = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" | Select-Object DisplayName,Publisher,DisplayVersion,UninstallString,PSPath,PSParentPath | Where-object {$_.DisplayName -like "*Topia*"}
-    $appv5 = Get-ItemProperty "HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*" | Select-Object DisplayName,Publisher,DisplayVersion,UninstallString,PSPath,PSParentPath | Where-object {$_.DisplayName -like "*Topia*"}
+}
+$appsReg = @()
+$appv4 = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" | Select-Object DisplayName,Publisher,DisplayVersion,UninstallString,PSPath,PSParentPath | Where-object {$_.DisplayName -like "*Topia*"}
+$appv5 = Get-ItemProperty "HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*" | Select-Object DisplayName,Publisher,DisplayVersion,UninstallString,PSPath,PSParentPath | Where-object {$_.DisplayName -like "*Topia*"}
 
-    $appsReg += $appv4
-    $appsReg += $appv5
-    $appsReg | export-csv "C:\Program Files\Vicarius\vRxUpgradeScript.csv" 
-    $appsReg
-    $ProgressPreference = $OriginalPref
-    }
-    else {
-        Write-host "vRx.exe does not exist"
-        "vRx.exe does not exist" | Out-File -FilePath $logFile -Append
-        Write-host "vRx.exe is required before running the script. Please run the upgradeprep.ps1 script to download the vRx.exe"
-    }
+$appsReg += $appv4
+$appsReg += $appv5
+$appsReg | export-csv "C:\Program Files\Vicarius\vRxUpgradeScript.csv" 
+$appsReg
+$ProgressPreference = $OriginalPref
 } 
 else {
     Write-host "OS is 32bit, Agent cannot be upgraded"

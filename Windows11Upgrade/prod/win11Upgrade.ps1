@@ -670,7 +670,7 @@ function appendEndpointTag {
             #Return $topiaStatus
         }
         #Start-Process powershell -ArgumentList "-NoExit", "-Command", "& `"$restartScriptBlock`" " -WindowStyle Hidden
-        Start-Process powershell -ArgumentList "-Command", "start-sleep -s 60; restart-service -name topia"
+        Start-Process powershell -WindowStyle Hidden -ArgumentList "-Command", "start-sleep -s 60; restart-service -name topia" 
     }
     Function getAgentversion() {
         $agent = Get-ChildItem "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall" | Get-ItemProperty | Where-Object {$_.DisplayName -like "*Topia*"} | Select-Object DisplayName, DisplayVersion, Publisher
